@@ -106,14 +106,6 @@ void FBoxComponentVisualizer::DrawVisualizationHUD(
     UFont* LargeFont = GEngine->GetLargeFont();
 	const float MaxLargeFontCharHeight = LargeFont->GetMaxCharHeight();
 
-	// const FVector2f CurrentValuePosition = DrawParams.ClockPosition + FVector2f(GGameplayCamerasDebugClockPadding);
-	// FCanvasTextItem TextItem(
-	// 		FVector2D(CurrentValuePosition),
-	// 		CurrentValueStr,
-	// 		LargeFont,
-	// 		DrawParams.ClockValueLineColor);
-	// Canvas->DrawItem(TextItem);
-
     const FIntRect CanvasRect = Canvas->GetViewRect();
     const float DrawPositionX = CanvasRect.Min.X + (CanvasRect.Width() * 0.5f);
     const float DrawPositionY = CanvasRect.Max.Y - MaxLargeFontCharHeight;
@@ -125,25 +117,6 @@ void FBoxComponentVisualizer::DrawVisualizationHUD(
         LargeFont,
         FLinearColor::Black);
 	Canvas->DrawItem(TextItem);
-
-    // Canvas->DrawShadowedString(
-    //     DrawPositionX, DrawPositionY,
-    //     FString::Printf(
-    //         TEXT("TEST DISPLAY THIS!: %s"), *UEnum::GetValueAsName(SelectedSide).ToString()),
-    //     LargeFont,
-    //     FLinearColor::Yellow
-    // );
-        
-   
-    // auto DisplaySnapToActorHelpText = [&](const FText& SnapHelpText)
-    // {
-    //     int32 XL;
-    //     int32 YL;
-    //     StringSize(GEngine->GetLargeFont(), XL, YL, *SnapHelpText.ToString());
-    //     const float DrawPositionX = FMath::FloorToFloat(CanvasRect.Min.X + (CanvasRect.Width() - XL) * 0.5f);
-    //     const float DrawPositionY = CanvasRect.Min.Y + 50.0f;
-    //     Canvas->DrawShadowedString(DrawPositionX, DrawPositionY, *SnapHelpText.ToString(), GEngine->GetLargeFont(), FLinearColor::Yellow);
-    // };
 }
 
 
@@ -218,56 +191,47 @@ bool FBoxComponentVisualizer::GetWidgetLocation(const FEditorViewportClient *Vie
 
 bool FBoxComponentVisualizer::HandleInputDelta(FEditorViewportClient *ViewportClient, FViewport *Viewport, FVector &DeltaTranslate, FRotator &DeltaRotate, FVector &DeltaScale)
 {
-    UBoxComponent* comp = Cast<UBoxComponent>(BoxPropertyPath.GetComponent());
-    if (comp == nullptr) { return false; }
+    UBoxComponent* BoxComponent = Cast<UBoxComponent>(BoxPropertyPath.GetComponent());
+    if (BoxComponent == nullptr) { return false; }
     if (SelectedSide == EBoxSide::NONE) { return false; }
 
-    FVector boxExtent = comp->GetScaledBoxExtent();
-    FVector location = comp->GetComponentLocation();
-    FVector moveDirection = FVector::ZeroVector;
-    float deltaTranslate = 0.f;
-    FVector TransformedVec = comp->GetComponentTransform().InverseTransformVector(DeltaTranslate);
+    FVector BoxExtent = BoxComponent->GetScaledBoxExtent();
+    FVector Location = BoxComponent->GetComponentLocation();
+
+    FVector TransformedVec = BoxComponent->GetComponentTransform().InverseTransformVector(DeltaTranslate);
     if (SelectedSide == EBoxSide::FRONT)
     {
-        deltaTranslate = TransformedVec.X / 2.f;
-        boxExtent.X += deltaTranslate;
-        moveDirection = comp->GetForwardVector();
+        BoxExtent.X += TransformedVec.X / 2.f;
+        Location += BoxComponent->GetForwardVector() * (TransformedVec.X / 2.f);
     }
     else if (SelectedSide == EBoxSide::BACK)
     {
-        deltaTranslate = -TransformedVec.X / 2.f;
-        boxExtent.X += deltaTranslate;
-        moveDirection = -comp->GetForwardVector();
+        BoxExtent.X -= TransformedVec.X / 2.f;
+        Location += BoxComponent->GetForwardVector() * (TransformedVec.X / 2.f);
     }
     else if (SelectedSide == EBoxSide::RIGHT)
     {
-        deltaTranslate = TransformedVec.Y / 2.f;
-        boxExtent.Y += deltaTranslate;
-        moveDirection = comp->GetRightVector();
+        BoxExtent.Y += TransformedVec.Y / 2.f;
+        Location += BoxComponent->GetRightVector() * (TransformedVec.Y / 2.f);
     }
     else if (SelectedSide == EBoxSide::LEFT)
     {
-        deltaTranslate = -TransformedVec.Y / 2.f;
-        boxExtent.Y += deltaTranslate;
-        moveDirection = -comp->GetRightVector();
+        BoxExtent.Y -= TransformedVec.Y / 2.f;
+        Location += BoxComponent->GetRightVector() * (TransformedVec.Y / 2.f);
     }
     else if (SelectedSide == EBoxSide::TOP)
     {
-        deltaTranslate = TransformedVec.Z / 2.f;
-        boxExtent.Z += deltaTranslate;
-        moveDirection = comp->GetUpVector();
+        BoxExtent.Z += TransformedVec.Z / 2.f;
+        Location += BoxComponent->GetUpVector() * (TransformedVec.Z / 2.f);
     }
     else if (SelectedSide == EBoxSide::BOTTOM)
     {
-        deltaTranslate = -TransformedVec.Z / 2.f;
-        boxExtent.Z += deltaTranslate;
-        moveDirection = -comp->GetUpVector();
+        BoxExtent.Z -= TransformedVec.Z / 2.f;
+        Location += BoxComponent->GetUpVector() * (TransformedVec.Z / 2.f);
     }
 
-    location += moveDirection * deltaTranslate;
-
-    comp->SetWorldLocation(location);
-    comp->SetBoxExtent(boxExtent, false);
+    BoxComponent->SetWorldLocation(Location);
+    BoxComponent->SetBoxExtent(BoxExtent, false);
     GEditor->RedrawLevelEditingViewports(true);
     return true;
 }
